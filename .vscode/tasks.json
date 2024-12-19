@@ -55,7 +55,7 @@
 				"run",
 				"-trimpath",		
 				"-ldflags=\"-s -w\"",
-				"./test/views/"
+				"./debug/views/"
 			]
 		}
 	]
