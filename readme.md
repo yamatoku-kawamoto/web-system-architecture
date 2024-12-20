@@ -7,20 +7,12 @@
 
 - **Node.js** v20.17以上
 
-## 【推奨】 VoltaによるNode.jsのバージョン管理
+## 【推奨】 Node.jsのバージョン管理
 
-https://github.com/volta-cli/volta/releases/v2.0.2
+- fnmを使用したバージョン管理
+- VoltaによるNode.jsのバージョン管理ができる場合はそちらを使用
 
-- volta-2.0.2-windows.zipをダウンロード
-- ダウンロードし、解凍したファイルすべてを環境変数Pathの通った場所に移動
-
-```Terminal
-node -v
-> v18.13.0 
-
-npm -v
-> 9.3.1
-```
+[fnm (Fast Node Manager) のインストール方法と使い方](https://qiita.com/taqumo/items/b25d486e6ead9f38a13d)
 
 ## 【推奨】pnpmによるパッケージ管理
 
@@ -71,6 +63,12 @@ pnpm build
 ビルドされたファイルは dist/ ディレクトリに出力される。
 
 ### 5.Go言語のテンプレート機能を試す
+
+
+goのインストール確認
+```bash
+go -v
+```
 
 Ctrl+Pでコマンドパレットを開き、タスクを実行する。
 
