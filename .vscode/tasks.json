@@ -47,8 +47,7 @@
 				"cwd": "${workspaceFolder}",
 				"env": {
 					"PORT": "19565",
-					"VIEWS_ROOT_PATH": "views/dist",
-					"ASSETS_ROOT_PATH": "views/"
+					"ASSETS_ROOT_PATH": "views/dist"
 				}
 			},
 			"args": [

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -14,18 +15,16 @@ import (
 
 // func init() {
 // 	os.Setenv("PORT", "19565")
-// 	os.Setenv("VIEWS_ROOT_PATH", "views/dist")
-// 	os.Setenv("ASSETS_ROOT_PATH", "views")
+// 	os.Setenv("ASSETS_ROOT_PATH", "views/dist")
 // }
 
 const (
-	EnvViewsRootPath  = "VIEWS_ROOT_PATH"
 	EnvAssetsRootPath = "ASSETS_ROOT_PATH"
 )
 
 func main() {
 	e := gin.Default()
-	templatesRootPath := path.Join(os.Getenv(EnvViewsRootPath))
+	templatesRootPath := path.Join(os.Getenv(EnvAssetsRootPath), "src")
 	template, err := parseTemplate(templatesRootPath)
 	if err != nil {
 		panic(err)
@@ -37,17 +36,40 @@ func main() {
 
 func routes(engine *gin.Engine) *gin.Engine {
 	assetsRootPath := path.Join(os.Getenv(EnvAssetsRootPath))
-	engine.StaticFile("/favicon.ico", assetsRootPath+"/public/favicon.ico")
-	engine.Static("/static", assetsRootPath+"/public")
-	engine.Static("/assets", assetsRootPath+"/dist/assets")
+	engine.Static("/assets", path.Join(assetsRootPath, "assets"))
 	engine.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "templates/index", nil)
 	})
 	engine.GET("/page/*path", func(c *gin.Context) {
-		name := path.Join("templates", "pages", c.Param("path"))
+		name := path.Join("templates", "pages", c.Param("path"),"index")
 		c.HTML(http.StatusOK, name, nil)
 	})
+	notFound := func(c *gin.Context) {
+		c.Status(http.StatusNotFound)
+	}
+	engine.NoRoute(staticFiles(assetsRootPath), notFound)
 	return engine
+}
+
+func staticFiles(assetsRootPath string) func(c *gin.Context) {
+	files := make(map[string]string)
+	for _, v := range must(filepath.Glob(assetsRootPath + "/*.*")) {
+		files[filepath.Base(v)] = v
+	}
+	return func(c *gin.Context) {
+		switch c.Request.Method {
+		case http.MethodGet, http.MethodHead:
+			path, ok := files[strings.TrimPrefix(c.Request.URL.Path, "/")]
+			if !ok {
+				c.Next()
+				return
+			}
+			c.File(path)
+			c.Abort()
+		default:
+			c.Next()
+		}
+	}
 }
 
 func parseTemplate(rootPath string) (*template.Template, error) {
@@ -92,4 +114,11 @@ func parseTemplate(rootPath string) (*template.Template, error) {
 		log.Print(v.Name())
 	}
 	return rootTemplate, nil
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
