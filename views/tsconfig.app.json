@@ -32,8 +32,11 @@
     "@src/*": [
       "src/*"
     ],
-    "@partial/*": [
-      "src/partials/*"
+    "@components/*": [
+      "src/components/*"
+    ],
+    "@assets/*": [
+      "src/assets/*"
     ]
   }
 }

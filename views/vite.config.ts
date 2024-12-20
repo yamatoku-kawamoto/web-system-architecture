@@ -78,7 +78,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@src": resolve(__dirname, "./src"),
-      "@partial": resolve(__dirname, "./src/partials"),
+      "@components": resolve(__dirname, "./src/components"),
+      "@assets": resolve(__dirname, "./src/assets"),
     },
   },
 });
