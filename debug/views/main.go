@@ -8,117 +8,141 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yargevad/filepathx"
 )
 
-// func init() {
-// 	os.Setenv("PORT", "19565")
-// 	os.Setenv("ASSETS_ROOT_PATH", "views/dist")
-// }
-
-const (
-	EnvAssetsRootPath = "ASSETS_ROOT_PATH"
+var (
+	// AssetRoot  = os.Getenv("ASSET_ROOT_PATH")
+	AssetRoot      = "views/dist"
+	TemplateRoot   = AssetRoot + "/src/templates"
+	ComponentsRoot = AssetRoot + "/src/components"
 )
 
 func main() {
-	e := gin.Default()
-	templatesRootPath := path.Join(os.Getenv(EnvAssetsRootPath), "src")
-	template, err := parseTemplate(templatesRootPath)
-	if err != nil {
-		panic(err)
-	}
-	e.SetHTMLTemplate(template)
-	e = routes(e)
-	e.Run(fmt.Sprintf("localhost:%s", os.Getenv("PORT")))
+	fmt.Println(os.Getwd())
+	engine := routes(gin.Default())
+	templates := must(parseTemplates())
+	engine.SetHTMLTemplate(templates)
+	addr := fmt.Sprintf("localhost:%v", withDefault(os.Getenv("PORT"), 19565))
+	engine.Run(addr)
 }
 
 func routes(engine *gin.Engine) *gin.Engine {
-	assetsRootPath := path.Join(os.Getenv(EnvAssetsRootPath))
-	engine.Static("/assets", path.Join(assetsRootPath, "assets"))
+	engine.Static("/assets", path.Join(AssetRoot, "/assets"))
 	engine.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "templates/index", nil)
+		values := gin.H{
+			"PageTitle": "Go Template | Vite + Solid + TS",
+		}
+		c.HTML(http.StatusOK, "index", values)
 	})
 	engine.GET("/page/*path", func(c *gin.Context) {
-		name := path.Join("templates", "pages", c.Param("path"),"index")
+		name := strings.TrimSuffix(strings.TrimPrefix(c.Param("path"), "/"), ".html")
 		c.HTML(http.StatusOK, name, nil)
 	})
-	notFound := func(c *gin.Context) {
-		c.Status(http.StatusNotFound)
-	}
-	engine.NoRoute(staticFiles(assetsRootPath), notFound)
-	return engine
-}
-
-func staticFiles(assetsRootPath string) func(c *gin.Context) {
-	files := make(map[string]string)
-	for _, v := range must(filepath.Glob(assetsRootPath + "/*.*")) {
-		files[filepath.Base(v)] = v
-	}
-	return func(c *gin.Context) {
-		switch c.Request.Method {
-		case http.MethodGet, http.MethodHead:
-			path, ok := files[strings.TrimPrefix(c.Request.URL.Path, "/")]
-			if !ok {
+	staticFiles := func() func(c *gin.Context) {
+		files := make(map[string]string)
+		for _, file := range must(filepathx.Glob(path.Join(AssetRoot, "*.*"))) {
+			name := filepath.Base(file)
+			files[name] = filepath.ToSlash(file)
+		}
+		serveFile := func(c *gin.Context) {
+			name := strings.TrimPrefix(c.Param("path"), "/")
+			if _, ok := files[name]; !ok {
 				c.Next()
 				return
 			}
-			c.File(path)
+			c.File(files[name])
 			c.Abort()
-		default:
-			c.Next()
+		}
+		return func(c *gin.Context) {
+			switch c.Request.Method {
+			case http.MethodGet, http.MethodHead:
+				serveFile(c)
+			default:
+				c.Next()
+			}
 		}
 	}
+	notFound := func(c *gin.Context) {
+		values := gin.H{
+			"AccessURL": c.Request.RequestURI,
+		}
+		c.HTML(http.StatusNotFound, "404", values)
+	}
+	engine.NoRoute(staticFiles(), notFound)
+
+	return engine
 }
 
-func parseTemplate(rootPath string) (*template.Template, error) {
-	rootTemplate := template.New("")
-	var parseTemplateFiles func(targetPath string) error
-	parseTemplateFiles = func(targetPath string) error {
-		files, err := os.ReadDir(path.Join(rootPath, targetPath))
+func parseTemplates() (*template.Template, error) {
+	var rootTemplate *template.Template
+	var parse func(rootPath, parentPath string) error
+	parse = func(rootPath, parentPath string) error {
+		basePath := path.Join(rootPath, parentPath)
+		files, err := os.ReadDir(basePath)
 		if err != nil {
-			return fmt.Errorf("failed to read directory: %v", err)
+			return err
 		}
 		for _, file := range files {
 			if file.IsDir() {
-				if err := parseTemplateFiles(path.Join(targetPath, file.Name())); err != nil {
+				if err := parse(rootPath, path.Join(parentPath, file.Name())); err != nil {
 					return err
 				}
 				continue
 			}
-			if strings.HasSuffix(file.Name(), ".html") {
-				t, err := template.ParseFiles(path.Join(rootPath, targetPath, file.Name()))
-				if err != nil {
-					return err
-				}
-				for _, v := range t.Templates() {
-					if strings.HasSuffix(file.Name(), ".html") {
-						name := path.Join(targetPath, strings.TrimSuffix(file.Name(), ".html"))
-						rootTemplate.AddParseTree(name, v.Tree)
-						continue
+			if !strings.HasSuffix(file.Name(), ".html") {
+				continue
+			}
+			t, err := template.ParseFiles(path.Join(basePath, file.Name()))
+			if err != nil {
+				return err
+			}
+			name := path.Join(parentPath, strings.TrimSuffix(file.Name(), ".html"))
+			for _, t := range t.Templates() {
+				if strings.HasSuffix(t.Name(), ".html") {
+					if rootTemplate == nil {
+						rootTemplate = template.New(name)
 					}
-					rootTemplate.AddParseTree(path.Join(targetPath, v.Name()), v.Tree)
+					rootTemplate.AddParseTree(name, t.Tree)
+					continue
 				}
+				rootTemplate.AddParseTree(path.Join(name, t.Name()), t.Tree)
 			}
 		}
 		return nil
 	}
-	if err := parseTemplateFiles("partials"); err != nil {
+	if err := parse(TemplateRoot, ""); err != nil {
 		return nil, err
 	}
-	if err := parseTemplateFiles("templates"); err != nil {
+	if err := parse(ComponentsRoot, ""); err != nil {
 		return nil, err
 	}
-	for _, v := range rootTemplate.Templates() {
-		log.Print(v.Name())
-	}
+
 	return rootTemplate, nil
 }
 
 func must[T any](v T, err error) T {
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	return v
+}
+
+func withDefault[T any](v string, defaultValue T) T {
+	switch any(defaultValue).(type) {
+	case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64:
+		if v == "" {
+			return defaultValue
+		}
+		i := must(strconv.Atoi(v))
+		return any(i).(T)
+	}
+	if v == "" {
+		return defaultValue
+	}
+	return any(v).(T)
 }
