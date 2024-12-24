@@ -1,0 +1,92 @@
+.grid {
+    &-root{
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    &-container {
+        display: flex;
+        flex-direction: row;
+        @media (max-width: 768px) {
+            &:nth-child(2n) {
+                margin-top: 25px;
+            }
+        }
+    }
+    
+    &-parent {
+        display: flex;
+        flex-direction: column;
+    }
+
+    &-child {
+        padding: 6px 20px;
+        margin: 2px;
+        @media (min-width: 768px) {
+            &{
+                padding: 18px 25px;
+                margin: 3px;
+            }
+        }
+
+        &:hover {
+            background-color: lightblue;
+        }
+    }
+}
+
+.account-registration{
+    & label{
+        display: flex;
+        & span{
+            width: 200px;
+        }
+    }
+}
+
+.breadcrumb{
+    & li{
+        display: inline-block;
+        cursor: pointer;
+        color: lightblue;
+        & span{
+            text-decoration: underline;
+        }
+        &::after{
+            color:initial;
+        }
+        &:not(:last-child)::after{
+            content: ">";
+            margin: 0 5px;
+        }
+    }
+}
+
+.registration{
+    width: 100%;
+    & table{
+        thead tr,tbody tr{
+            display: flex;
+            justify-content: space-between;
+        }
+        width: 100%;
+        & td{
+            & button{
+                padding: 7px 45px;
+                border-radius: 20px;
+            }
+        }
+    }
+}
+
+.control {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+
+    & button{
+        padding: 12px 28px;
+        border-radius: 5px;
+        border: 1px solid lightgray;
+    }
+}
