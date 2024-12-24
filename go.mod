@@ -12,6 +12,7 @@ require (
 	github.com/uptrace/bun/dialect/sqlitedialect v1.2.6
 	github.com/uptrace/bun/driver/pgdriver v1.2.6
 	github.com/uptrace/bun/driver/sqliteshim v1.2.6
+	github.com/yargevad/filepathx v1.0.0
 	golang.org/x/time v0.8.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
